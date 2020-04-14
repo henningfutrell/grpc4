@@ -1,6 +1,6 @@
 CMAKE=$(sh which cmake)
 
-all: do_cmake build_grpc repeat_cmake build_exe
+all: clean do_cmake build_grpc repeat_cmake build_exe
 
 do_cmake:
 	sh -e install_cmake.sh
@@ -15,3 +15,6 @@ repeat_cmake:
 
 build_exe:
 	cd build && make all
+
+clean:
+	rm build/*
