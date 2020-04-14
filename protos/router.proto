@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option cc_generic_services = false;
+
+package router.rpc;
+
+service RouterService {
+    rpc KeepAliveRoute (stream Ack) returns (stream Ack) {}
+    rpc SubscribeToRouteInfo (Ack) returns (stream RouteInfo) {}
+}
+
+message RouteInfo {
+    // should be formatted <ip>:<port>
+    string ip_address_and_port = 1;
+}
+
+message Ack {
+
+}
+

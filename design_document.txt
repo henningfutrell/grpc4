@@ -1,0 +1,12 @@
+Henning Futrell : 826004448
+
+This project focuses on the distributed server aspect.
+
+New protocols need to be established to:
+- Elect new available server
+- Route traffic to appropriate server
+- Alert client that current server crashed
+
+Because I use bidirectional streaming, I need to find the gRpc equivalent of a
+connection lost message. When connection is lost the client will poll the router
+server for a new ip/port. This should be available in channel state or similar.

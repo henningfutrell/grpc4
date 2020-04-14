@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option cc_generic_services = false;
+
+package timeline.rpc;
+
+service TimelineService {
+    rpc GetTimeline(stream TimelineUpdate) returns(stream TimelineUpdate) {}
+    rpc DoCommand(Command) returns(Result) {}
+}
+
+message TimelineUpdate {
+    string user_name = 1;
+    string content = 3;
+    int32 time = 2;
+}
+
+message Command {
+    string username = 1;
+    string command = 2;
+}
+
+message Result {
+    CommandStatus status = 1;
+    repeated string all_user_list = 2;
+    repeated string following_user_list = 3;
+}
+
+enum CommandStatus {
+    SUCCESS = 0;
+    FAILURE_ALREADY_EXISTS = 1;
+    FAILURE_NOT_EXISTS = 2;
+    FAILURE_INVALID_USERNAME = 3;
+    FAILURE_INVALID = 4;
+    FAILURE_UNKNOWN = 5;
+}
