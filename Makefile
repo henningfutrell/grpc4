@@ -17,4 +17,4 @@ build_exe:
 	cd build && make all
 
 clean:
-	rm build/*
+	rm -rf build/*
