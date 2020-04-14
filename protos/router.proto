@@ -5,7 +5,8 @@ option cc_generic_services = false;
 package router.rpc;
 
 service RouterService {
-    rpc KeepAliveRoute (stream Ack) returns (stream Ack) {}
+    rpc RegisterRoute(RouteInfo) returns (Ack) {}
+    rpc KeepAliveRoute (stream RouteInfo) returns (stream Ack) {}
     rpc SubscribeToRouteInfo (Ack) returns (stream RouteInfo) {}
 }
 

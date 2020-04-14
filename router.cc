@@ -36,26 +36,24 @@ class RouterServiceImpl final : public RouterService::Service {
     // The router keeps the list and decides which to use in the list as
     // the active master.
     Status KeepAliveRoute(ServerContext* context,
-            ServerReaderWriter<Ack, Ack>* stream
+            ServerReaderWriter<Ack, RouteInfo>* stream
     ) override {
-        std::string info = parse_ip_and_port(context->peer());
-        std::cout << "Route registration from " << info << std::endl;
-        if (servers.empty()) {
-            master = info;
-        }
-        servers.emplace(info, info);
-        context->deadline();
+        RouteInfo route;
+        stream->Read(&route);
+        std::string route_info = route.ip_address_and_port();
+        std::cout << "Route " << route_info << " registered. Keeping alive." << std::endl;
+
         while(true) {
-            Ack ack;
-            stream->Write(ack);
-            stream->Read(&ack);
+            Ack ack_sent;
+            stream->Write(ack_sent);
+            stream->Read(&route);
             if (context->IsCancelled()) {
-                servers.erase(info);
-                std::cout << "Route " << context->peer() << " considered disconnected and dropped." << std::endl;
-                break;
+                std::cout << "Route " << route_info << " considered disconnected and dropped." << std::endl;
+                servers.erase(route_info);
+
+                return Status::CANCELLED;
             }
         }
-        return Status::OK;
     }
 
     Status SubscribeToRouteInfo(ServerContext* context,
@@ -82,7 +80,7 @@ class RouterServiceImpl final : public RouterService::Service {
 };
 
 int main(int argc, char** argv) {
-    std::string host_and_port = "10.0.2.6:3005";
+    std::string host_and_port;
     int opt = 0;
     while ((opt = getopt(argc, argv, "p:")) != -1){
         switch(opt) {
@@ -98,7 +96,7 @@ int main(int argc, char** argv) {
 
     RouterServiceImpl service;
     builder.RegisterService(&service);
-    builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_TIME_MS, 20000);
+    builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_TIME_MS, 2000);
     builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 5);
     builder.AddChannelArgument(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
     builder.AddChannelArgument(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);

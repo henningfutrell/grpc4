@@ -426,24 +426,30 @@ int main(int argc, char** argv) {
 
     // register with router server
     bool connected = false;
-    while(!connected) {
-        auto router_stub = std::unique_ptr<RouterService::Stub>(
-                RouterService::NewStub(grpc::CreateChannel(router_info,
+    std::shared_ptr<RouterService::Stub> router_stub;
+
+    std::cout << "Connecting to router at " << router_info << std::endl;
+    router_stub = std::unique_ptr<RouterService::Stub>(
+            RouterService::NewStub(grpc::CreateChannel(router_info,
                                                            grpc::InsecureChannelCredentials())));
 
-        std::cout << "Connecting to router..." << std::endl;
+    std::thread keep_alive_thread([hostname_and_port, router_stub]() {
         ClientContext context;
+        auto stream = std::shared_ptr<ClientReaderWriter<RouteInfo,
+        Ack>>(router_stub->KeepAliveRoute(&context));
+        RouteInfo r;
         Ack ack;
-        std::shared_ptr<ClientReaderWriter<Ack, Ack>> stream(router_stub->KeepAliveRoute(&context));
-        while (!stream->Read(&ack)) {
+        r.set_ip_address_and_port(hostname_and_port);
+        while (true) {
+            Ack ack;
+            stream->Write(r);
+            stream->Read(&ack);
             sleep(1);
         }
-        connected = true;
-        std::cout << "Server registered with router: " << context.peer() << std::endl;
-    }
+    });
+    keep_alive_thread.detach();
 
     std::cout << "Server listening on " << hostname_and_port << std::endl;
-
     // Wait for the server to shutdown.
     server->Wait();
 
