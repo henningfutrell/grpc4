@@ -29,7 +29,7 @@ using router::rpc::RouterService;
 using router::rpc::RouteInfo;
 
 class RouterServiceImpl final : public RouterService::Service {
-    std::string master = "undefined";
+    std::string master = "";
     std::map<std::string, std::string> servers;
 
     // As servers come on line they register with the router.
@@ -41,7 +41,12 @@ class RouterServiceImpl final : public RouterService::Service {
         RouteInfo route;
         stream->Read(&route);
         std::string route_info = route.ip_address_and_port();
-        std::cout << "Route " << route_info << " registered. Keeping alive." << std::endl;
+        if (servers.empty()) {
+            master = route_info;
+        }
+        servers.emplace(route_info, route_info);
+
+        std::cout << "Route " << route_info << " registered. Client initiated keep alive." << std::endl;
 
         while(true) {
             Ack ack_sent;
@@ -51,6 +56,13 @@ class RouterServiceImpl final : public RouterService::Service {
                 std::cout << "Route " << route_info << " considered disconnected and dropped." << std::endl;
                 servers.erase(route_info);
 
+                if (master == route_info) {
+                    if (servers.empty()) {
+                        master = "";
+                    } else {
+                        master = servers.begin()->second;
+                    }
+                }
                 return Status::CANCELLED;
             }
         }
@@ -61,21 +73,20 @@ class RouterServiceImpl final : public RouterService::Service {
                    ServerWriter<RouteInfo>* writerStream
     ) override {
         std::cout << context->peer() << " subscribed to route info." << std::endl;
-        std::string id = context->peer();
-        std::string previous_master = master;
+        std::string previous_master = "";
         while (true) {
             if (previous_master != master) {
+                std::cout << "Updating master for " << context->peer() << " to " << master << std::endl;
                 previous_master = master;
                 RouteInfo r;
                 r.set_ip_address_and_port(master);
                 writerStream->Write(r);
             }
             if (context->IsCancelled()) {
-                break;
+                return Status::CANCELLED;
             }
             sleep(1);
         }
-        return Status::OK;
     }
 };
 

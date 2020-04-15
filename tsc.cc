@@ -71,7 +71,7 @@ public:
                 RouteInfo route;
                 bool status = this->router_stream->Read(&route);
                 if(route.ip_address_and_port() != this->server_info) {
-                    this->server_info = route.ip_address_and_port();
+                    this->ConnectToServer(route.ip_address_and_port());
                 }
                 sleep(3);
             }
@@ -82,6 +82,8 @@ public:
     ~Client() {
         this->update_reader.join();
     }
+
+    int ConnectToServer(std::string server_ip_and_port);
 };
 
 int main(int argc, char** argv) {
@@ -122,8 +124,16 @@ int Client::connectTo()
     this->server_stub = std::unique_ptr<TimelineService::Stub>(
             TimelineService::NewStub(grpc::CreateChannel(this->server_info,
                                                        grpc::InsecureChannelCredentials())));
+    std::cout << "Created server stub for server at " << server_info << std::endl;
 
     return 1; // return 1 if success, otherwise return -1
+}
+
+int Client::ConnectToServer(std::string server_ip_and_port) {
+    this->server_stub = std::unique_ptr<TimelineService::Stub>(
+            TimelineService::NewStub(grpc::CreateChannel(server_ip_and_port,
+                                                         grpc::InsecureChannelCredentials())));
+    std::cout << "Created server stub for server at " << server_ip_and_port << std::endl;
 }
 
 IReply Client::processCommand(std::string& input)

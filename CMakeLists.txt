@@ -6,6 +6,7 @@ add_compile_options(-std=c++14)
 set(CLIENT_EXE fbc)
 set(SERVER_EXE fbsd)
 set(ROUTER_EXE router)
+set(SLAVE_EXE slave)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -61,3 +62,12 @@ target_link_libraries(${ROUTER_EXE}
         gRPC::grpc++_reflection
         )
 
+add_executable(${SLAVE_EXE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/slave.cc
+        ${PROTOC_GENERATED_CC_FILES}
+        ${HEADERS}
+        )
+target_link_libraries(${SLAVE_EXE}
+        ${PROTOBUF_LIBRARIES}
+        gRPC::grpc++_reflection
+        )
