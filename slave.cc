@@ -7,7 +7,7 @@
 int daemonize(char** argv) {
     pid_t pid = fork();
     if (pid == 0) {
-        execv("fbsd", argv);
+        execv("build/fbsd", argv);
     } else {
         int status;
         waitpid(pid, &status, 0);
