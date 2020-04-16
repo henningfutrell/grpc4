@@ -6,7 +6,7 @@ add_compile_options(-std=c++14)
 set(CLIENT_EXE fbc)
 set(SERVER_EXE fbsd)
 set(ROUTER_EXE router)
-set(SLAVE_EXE slave)
+set(SLAVE_EXE start)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 

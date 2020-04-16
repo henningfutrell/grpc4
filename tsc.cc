@@ -41,6 +41,7 @@ class Client : public IClient
     std::string server_info;
     std::unique_ptr<::grpc::ClientReader<::router::rpc::RouteInfo>> router_stream;
     std::thread update_reader;
+    bool break_timeline = false;
 
 protected:
     int connectTo() override;
@@ -58,25 +59,6 @@ public:
         this->port = port;
         this->router_info = router;
         this->server_info = "";
-
-        // Need to get information from the routing server
-        this->router_stub = std::unique_ptr<RouterService::Stub>(
-                RouterService::NewStub(grpc::CreateChannel(this->router_info,
-                                                           grpc::InsecureChannelCredentials())));
-
-        this->router_stream = router_stub->SubscribeToRouteInfo(&this->router_client_context,Ack());
-        this->update_reader = std::thread([this]() {
-            bool good = true;
-            while(good) {
-                RouteInfo route;
-                bool status = this->router_stream->Read(&route);
-                if(route.ip_address_and_port() != this->server_info) {
-                    this->ConnectToServer(route.ip_address_and_port());
-                }
-                sleep(3);
-            }
-        });
-        this->update_reader.detach();
     }
 
     ~Client() {
@@ -121,10 +103,25 @@ int main(int argc, char** argv) {
 
 int Client::connectTo()
 {
-    this->server_stub = std::unique_ptr<TimelineService::Stub>(
-            TimelineService::NewStub(grpc::CreateChannel(this->server_info,
+    // Need to get information from the routing server
+    this->router_stub = std::unique_ptr<RouterService::Stub>(
+            RouterService::NewStub(grpc::CreateChannel(this->router_info,
                                                        grpc::InsecureChannelCredentials())));
-    std::cout << "Created server stub for server at " << server_info << std::endl;
+
+    this->router_stream = router_stub->SubscribeToRouteInfo(&this->router_client_context,Ack());
+    this->update_reader = std::thread([this]() {
+        bool good = true;
+        while(good) {
+            RouteInfo route;
+            bool status = this->router_stream->Read(&route);
+            if(route.ip_address_and_port() != this->server_info) {
+                this->ConnectToServer(route.ip_address_and_port());
+                this->break_timeline = true;
+            }
+            sleep(3);
+        }
+    });
+    this->update_reader.detach();
 
     return 1; // return 1 if success, otherwise return -1
 }
@@ -133,7 +130,7 @@ int Client::ConnectToServer(std::string server_ip_and_port) {
     this->server_stub = std::unique_ptr<TimelineService::Stub>(
             TimelineService::NewStub(grpc::CreateChannel(server_ip_and_port,
                                                          grpc::InsecureChannelCredentials())));
-    std::cout << "Created server stub for server at " << server_ip_and_port << std::endl;
+    std::cout << "Changed server to " << server_ip_and_port << std::endl;
 }
 
 IReply Client::processCommand(std::string& input)
@@ -161,21 +158,28 @@ IReply Client::processCommand(std::string& input)
 
 void Client::processTimeline()
 {
-    ClientContext context;
-    context.AddMetadata("uname", username);
+    /**
+     * This bool is used to switch timeline on servers.
+     * Make sure we don't break out immediately so put it up front
+     * since setting the server will change this value
+     * before timeline ever entered.
+     **/
+    this->break_timeline = false;
 
+    ClientContext context;
+    std::cout << "username is " << username << std::endl;
+    context.AddMetadata("uname", username);
     std::shared_ptr<ClientReaderWriter<TimelineUpdate, TimelineUpdate>> stream(
             server_stub->GetTimeline(&context));
 
-    // make var to pass into lambda
     std::string uname = username;
     // Thread used to write chat messages to the server
-    std::thread writer([stream, uname]() {
+    std::thread writer([this, stream, &context]() {
         std::string msg;
-        while (msg != "\\quit") {
+        while (!break_timeline) {
             msg = getPostMessage();
             TimelineUpdate p;
-            p.set_user_name(uname);
+            p.set_user_name(this->username);
             p.set_content(msg);
             stream->Write(p);
         }
@@ -183,15 +187,24 @@ void Client::processTimeline()
     });
 
     // Thread used to read incoming messages from the server
-    std::thread reader([stream]() {
+    std::thread reader([this, stream]() {
         TimelineUpdate p;
-        while(stream->Read(&p)){
-            std::time_t t = p.time();
-            displayPostMessage(p.user_name(), p.content(), t);
+        TimelineUpdate last_p = p;
+        while(!break_timeline) {
+            stream->Read(&p);
+            // When a stream crashes this will dump reads. Quick fix
+            // is to not post the same timed posts over and over.
+            if (p.time() != last_p.time()) {
+                last_p = p;
+                std::time_t t = p.time();
+                displayPostMessage(p.user_name(), p.content(), t);
+            }
         }
     });
 
     //Wait for the threads to finish
     writer.join();
     reader.join();
+    std::cout << " Reconnecting " << std::endl;
+    processTimeline();
 }

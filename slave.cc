@@ -10,9 +10,10 @@ int daemonize(char** argv) {
         execv("fbsd", argv);
     } else {
         int status;
-        pid_t child_exit_status = waitpid(pid, &status, 0);
-        if (child_exit_status == -1) {
+        waitpid(pid, &status, 0);
+        if (status != 0) {
             // restart
+            std::cout << "Server failed. Restarting..." << std::endl;
             daemonize(argv);
         }
     }
