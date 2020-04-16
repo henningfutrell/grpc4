@@ -47,6 +47,7 @@ protected:
     int connectTo() override;
     IReply processCommand(std::string& input) override;
     void processTimeline() override;
+    void listenOnTimeline();
 
 public:
     Client(std::string  hostname,
@@ -130,7 +131,6 @@ int Client::ConnectToServer(std::string server_ip_and_port) {
     this->server_stub = std::unique_ptr<TimelineService::Stub>(
             TimelineService::NewStub(grpc::CreateChannel(server_ip_and_port,
                                                          grpc::InsecureChannelCredentials())));
-    std::cout << "Changed server to " << server_ip_and_port << std::endl;
 }
 
 IReply Client::processCommand(std::string& input)
@@ -156,19 +156,11 @@ IReply Client::processCommand(std::string& input)
     return reply;
 }
 
-void Client::processTimeline()
-{
-    /**
-     * This bool is used to switch timeline on servers.
-     * Make sure we don't break out immediately so put it up front
-     * since setting the server will change this value
-     * before timeline ever entered.
-     **/
-    this->break_timeline = false;
-
+void Client::listenOnTimeline() {
     ClientContext context;
-    std::cout << "username is " << username << std::endl;
     context.AddMetadata("uname", username);
+
+    this->break_timeline = false;
     std::shared_ptr<ClientReaderWriter<TimelineUpdate, TimelineUpdate>> stream(
             server_stub->GetTimeline(&context));
 
@@ -205,6 +197,35 @@ void Client::processTimeline()
     //Wait for the threads to finish
     writer.join();
     reader.join();
-    std::cout << " Reconnecting " << std::endl;
-    processTimeline();
+    listenOnTimeline();
+}
+
+void Client::processTimeline()
+{
+    /**
+     * This bool is used to switch timeline on servers.
+     * Make sure we don't break out immediately so put it up front
+     * since setting the server will change this value
+     * before timeline ever entered.
+     **/
+
+    ClientContext context;
+    context.AddMetadata("uname", username);
+
+    std::shared_ptr<ClientReaderWriter<TimelineUpdate, TimelineUpdate>> preamble(
+            server_stub->GetTimelinePreamble(&context));
+
+    TimelineUpdate p;
+    TimelineUpdate last_p = p;
+    while(preamble->Read(&p)) {
+        // When a stream crashes this will dump reads. Quick fix
+        // is to not post the same timed posts over and over.
+        if (p.time() != last_p.time()) {
+            last_p = p;
+            std::time_t t = p.time();
+            displayPostMessage(p.user_name(), p.content(), t);
+        }
+    }
+
+    listenOnTimeline();
 }

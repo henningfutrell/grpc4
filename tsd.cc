@@ -346,12 +346,12 @@ class TimelineServiceImpl final : public TimelineService::Service {
         return Status::OK;
     }
 
-    Status GetTimeline(ServerContext* context,
-                       ServerReaderWriter<TimelineUpdate, TimelineUpdate>* stream
-    ) override  {
-        std::string username = context->client_metadata().find("uname")->second.data();
-        username = username.substr(0, username.find('\303'));
-        listeners.emplace(username, stream);
+    Status GetTimelinePreamble(ServerContext* context,
+                               ServerReaderWriter<TimelineUpdate, TimelineUpdate>*stream
+    ) override {
+        auto data_iter = context->client_metadata().find("uname");
+        std::string username((data_iter->second).data(),  (data_iter->second).length());
+        std::cout << "username extracted:" << username << std::endl;
         std::vector<Post> all_posts;
 
         // get the users following last 20 posts and place on all post pool
@@ -371,6 +371,23 @@ class TimelineServiceImpl final : public TimelineService::Service {
             stream->Write(new_posting);
         }
 
+        return Status::OK;
+    }
+
+    Status GetTimeline(ServerContext* context,
+                       ServerReaderWriter<TimelineUpdate, TimelineUpdate>* stream
+    ) override  {
+        auto data_iter = context->client_metadata().find("uname");
+        std::string username((data_iter->second).data(),  (data_iter->second).length());
+        std::cout << "username extracted:" << username << std::endl;
+        listeners.emplace(username, stream);
+
+        // Entering here may not be in the db. So try.
+        pool_delegate.add_user(username);
+        pool_delegate.follow_self(username);
+        pool_delegate.serialize_user(username);
+
+
         TimelineUpdate p;
         while(stream->Read(&p)) {
             std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -378,7 +395,6 @@ class TimelineServiceImpl final : public TimelineService::Service {
             username = p.user_name();
 
             // update the users db
-            std::sort(all_posts.begin(), all_posts.end());
             Post post{};
             post.time = time;
             post.username = username;
@@ -396,6 +412,8 @@ class TimelineServiceImpl final : public TimelineService::Service {
                 }
             }
         }
+
+        listeners.erase(username);
         return Status::OK;
     }
 };

@@ -5,6 +5,7 @@ option cc_generic_services = false;
 package timeline.rpc;
 
 service TimelineService {
+    rpc GetTimelinePreamble(stream TimelineUpdate) returns (stream TimelineUpdate) {}
     rpc GetTimeline(stream TimelineUpdate) returns(stream TimelineUpdate) {}
     rpc DoCommand(Command) returns(Result) {}
 }

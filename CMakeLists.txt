@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.0)
 
 add_compile_options(-std=c++14)
 
-set(CLIENT_EXE fbc)
+set(CLIENT_EXE client)
 set(SERVER_EXE fbsd)
 set(ROUTER_EXE router)
 set(SLAVE_EXE start)

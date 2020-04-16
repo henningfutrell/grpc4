@@ -1,13 +1,28 @@
-To run initially simply run:
+Initially run make. It will install cmake if not installed,
+build the "build" directory, create the grpc files and build the binaries. The
+machine must have the default password.
 
+run:
 $ make
 
-This should install cmake, build the "build" directory, create the grpc files and build the binaries.
+After this, a router needs to be started. There is logic to search for a router,
+but it works much better to just start a router with:
+$./build/router -p <router_machine_ip>:<port>
 
-After this the server can be run with
+To start a master-server pair on a machine run:
+$ ./bin/start -h <machine_ip>:<port> -r <router_machine_ip>:<port>
 
-$ ./bin/fbsd
+The clients are started with:
+$ ./bin/client -u <username> -r <router_machine_ip>:<port>
 
-and the clients can be run with
+After all are connected they will transparently maintain connections.
 
-$ ./bin/fbc -u <username>
+KNOWN BUG:
+[Timeline] When the connection is broken and the client reconnects there is a
+slight hang for a read. To make this work I would need to convert the stream to
+an asynchronous reader writer, which is too much work for a non production
+assignment that is 99% to spec.
+
+    [solution]: When the timeline server switches just send the intended message
+    twice and it will succeed on the second send. This is just due to a blocking
+    call in gRpc.

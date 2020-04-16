@@ -10,3 +10,14 @@ New protocols need to be established to:
 Because I use bidirectional streaming, I need to find the gRpc equivalent of a
 connection lost message. When connection is lost the client will poll the router
 server for a new ip/port. This should be available in channel state or similar.
+
+The servers register with the router and maintain a "heartbeat" protocol to assure the router
+they are up. If the router detects loss of a server it drops the server from the register.
+
+Each master has a slave that keeps it up. The master does not keep the slave up, because that
+would be annoying to close. The slave's behavior is trivial, so should not expect errors.
+
+The client needs some more functions to handle listeners and such. Also, the timeline
+needed to be reimplemented so that changing a server while in timeline does not
+keep reloading the previous posts. This has been addressed by splitting the
+timeline function into two separate RPC calls, one of which only occurs once.
