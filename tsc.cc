@@ -72,7 +72,7 @@ public:
 int main(int argc, char** argv) {
 
     std::string hostname = "localhost";
-    std::string username = "default";
+    std::string username;
     std::string port = "3000";
     std::string router;
     int opt = 0;
@@ -91,8 +91,13 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (router.empty()) {
-        std::cout << "Please enter router: -r <router ip>:<port>" <<std::endl;
+    if (username.empty() || router.empty()) {
+        if (username.empty()) {
+            std::cout << "Please enter username: -u <username>" << std::endl;
+        }
+        if (router.empty()) {
+            std::cout << "Please enter router: -r <router ip>:<port>" << std::endl;
+        }
         exit(1);
     }
 
