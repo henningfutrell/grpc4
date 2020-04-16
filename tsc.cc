@@ -91,6 +91,11 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (router.empty()) {
+        std::cout << "Please enter router: -r <router ip>:<port>" <<std::endl;
+        exit(1);
+    }
+
     std::stringstream host_and_port;
     host_and_port << hostname << ":" << port;
 

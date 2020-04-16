@@ -21,10 +21,10 @@ int daemonize(char** argv) {
 }
 
 int main(int argc, char** argv) {
-    std::string hostname_and_port = "localhost:3000";
-    std::string router_info = "localhost:3005";
+    std::string hostname_and_port;
+    std::string router_info;
     int opt = 0;
-    while ((opt = getopt(argc, argv, "h:u:p:r")) != -1){
+    while ((opt = getopt(argc, argv, "h:r:")) != -1){
         switch(opt) {
             case 'h':
                 hostname_and_port = optarg;break;
@@ -33,6 +33,11 @@ int main(int argc, char** argv) {
             default:
                 std::cerr << "Invalid Command Line Argument\n";
         }
+    }
+
+    if (hostname_and_port.empty() || router_info.empty()) {
+        std::cout << "Please enter -h <host ip>:<port> -r <router ip>:<port>" << std::endl;
+        exit(1);
     }
 
     daemonize(argv);

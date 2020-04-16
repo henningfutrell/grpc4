@@ -93,13 +93,18 @@ class RouterServiceImpl final : public RouterService::Service {
 int main(int argc, char** argv) {
     std::string host_and_port;
     int opt = 0;
-    while ((opt = getopt(argc, argv, "p:")) != -1){
+    while ((opt = getopt(argc, argv, "h:")) != -1){
         switch(opt) {
-            case 'p':
+            case 'h':
                 host_and_port = optarg;break;
             default:
                 std::cerr << "Invalid Command Line Argument\n";
         }
+    }
+
+    if (host_and_port.empty()) {
+        std::cout << "Please enter -h <host ip>:<port>" << std::endl;
+        exit(1);
     }
 
     ServerBuilder builder;
